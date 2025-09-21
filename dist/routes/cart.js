@@ -2,8 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const express_validator_1 = require("express-validator");
-const cart_1 = require("@/controllers/cart");
-const middleware_1 = require("@/middleware");
+const cart_1 = require("../controllers/cart");
+const middleware_1 = require("../middleware");
 const router = (0, express_1.Router)();
 const addToCartValidation = [
     (0, express_validator_1.body)('productId')

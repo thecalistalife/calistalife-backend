@@ -1,4 +1,4 @@
-import { IWishlist, IOrder, ICollection } from '@/types';
+import { IWishlist, IOrder, ICollection } from '../types';
 export declare const Wishlist: import("mongoose").Model<IWishlist, {}, {}, {}, import("mongoose").Document<unknown, {}, IWishlist, {}, {}> & IWishlist & Required<{
     _id: unknown;
 }> & {

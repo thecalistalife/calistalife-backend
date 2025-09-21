@@ -10,24 +10,24 @@ const helmet_1 = __importDefault(require("helmet"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const path_1 = __importDefault(require("path"));
-const middleware_1 = require("@/middleware");
-const auth_1 = __importDefault(require("@/routes/auth"));
-const products_1 = __importDefault(require("@/routes/products"));
-const cart_1 = __importDefault(require("@/routes/cart"));
-const orders_1 = __importDefault(require("@/routes/orders"));
-const payments_1 = __importDefault(require("@/routes/payments"));
+const index_1 = require("./middleware/index");
+const auth_1 = __importDefault(require("./routes/auth"));
+const products_1 = __importDefault(require("./routes/products"));
+const cart_1 = __importDefault(require("./routes/cart"));
+const orders_1 = __importDefault(require("./routes/orders"));
+const payments_1 = __importDefault(require("./routes/payments"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 app.set('trust proxy', 1);
 app.use((0, helmet_1.default)({
     crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
-app.use((0, cors_1.default)(middleware_1.corsOptions));
-app.use(middleware_1.generalRateLimit);
+app.use((0, cors_1.default)(index_1.corsOptions));
+app.use(index_1.generalRateLimit);
 app.use(express_1.default.json({ limit: '10mb' }));
 app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' }));
 app.use((0, cookie_parser_1.default)());
-app.use(middleware_1.requestLogger);
+app.use(index_1.requestLogger);
 app.use('/uploads', express_1.default.static(path_1.default.join(__dirname, '../uploads')));
 app.get('/api/health', (req, res) => {
     res.status(200).json({
@@ -42,8 +42,8 @@ app.use('/api/products', products_1.default);
 app.use('/api/cart', cart_1.default);
 app.use('/api/orders', orders_1.default);
 app.use('/api/payments', payments_1.default);
-app.use(middleware_1.notFound);
-app.use(middleware_1.errorHandler);
+app.use(index_1.notFound);
+app.use(index_1.errorHandler);
 const connectDB = async () => {
     try {
         const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/thecalista';
@@ -53,7 +53,7 @@ const connectDB = async () => {
     }
     catch (error) {
         console.error('❌ MongoDB connection failed:', error);
-        process.exit(1);
+        console.log('⚠️  Continuing without database for development/testing...');
     }
 };
 mongoose_1.default.connection.on('disconnected', () => {
@@ -76,7 +76,7 @@ process.on('SIGINT', async () => {
 });
 const startServer = async () => {
     await connectDB();
-    const PORT = process.env.PORT || 5000;
+    const PORT = process.env.PORT || 10000;
     const server = app.listen(PORT, () => {
         console.log('🚀 TheCalista Backend Server Started');
         console.log(`📍 Server running on port ${PORT}`);

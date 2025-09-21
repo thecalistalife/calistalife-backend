@@ -2,8 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const express_validator_1 = require("express-validator");
-const auth_1 = require("@/controllers/auth");
-const middleware_1 = require("@/middleware");
+const auth_1 = require("../controllers/auth");
+const middleware_1 = require("../middleware");
 const router = (0, express_1.Router)();
 const registerValidation = [
     (0, express_validator_1.body)('name')
@@ -26,6 +26,31 @@ const loginValidation = [
     (0, express_validator_1.body)('password')
         .notEmpty()
         .withMessage('Password is required')
+];
+const forgotPasswordValidation = [
+    (0, express_validator_1.body)('email')
+        .isEmail()
+        .normalizeEmail()
+        .withMessage('Please provide a valid email')
+];
+const resetPasswordValidation = [
+    (0, express_validator_1.body)('token')
+        .notEmpty()
+        .withMessage('Token is required'),
+    (0, express_validator_1.body)('email')
+        .isEmail()
+        .normalizeEmail()
+        .withMessage('Please provide a valid email'),
+    (0, express_validator_1.body)('newPassword')
+        .isLength({ min: 6 })
+        .withMessage('New password must be at least 6 characters long')
+];
+const verifyEmailValidation = [
+    (0, express_validator_1.body)('token').notEmpty().withMessage('Token is required'),
+    (0, express_validator_1.body)('email').isEmail().normalizeEmail().withMessage('Valid email required')
+];
+const googleLoginValidation = [
+    (0, express_validator_1.body)('idToken').notEmpty().withMessage('Google idToken is required')
 ];
 const updateProfileValidation = [
     (0, express_validator_1.body)('name')
@@ -84,7 +109,13 @@ const addressValidation = [
 router.post('/register', middleware_1.authRateLimit, registerValidation, middleware_1.handleValidationErrors, auth_1.register);
 router.post('/login', middleware_1.authRateLimit, loginValidation, middleware_1.handleValidationErrors, auth_1.login);
 router.post('/logout', auth_1.logout);
+router.post('/refresh', auth_1.refreshToken);
+router.post('/password/forgot', middleware_1.authRateLimit, forgotPasswordValidation, middleware_1.handleValidationErrors, auth_1.forgotPassword);
+router.post('/password/reset', middleware_1.authRateLimit, resetPasswordValidation, middleware_1.handleValidationErrors, auth_1.resetPassword);
+router.post('/verify/confirm', verifyEmailValidation, middleware_1.handleValidationErrors, auth_1.verifyEmail);
+router.post('/google', googleLoginValidation, middleware_1.handleValidationErrors, auth_1.googleLogin);
 router.use(middleware_1.protect);
+router.post('/verify/request', auth_1.requestEmailVerification);
 router.get('/me', auth_1.getMe);
 router.put('/profile', updateProfileValidation, middleware_1.handleValidationErrors, auth_1.updateProfile);
 router.put('/password', changePasswordValidation, middleware_1.handleValidationErrors, auth_1.changePassword);

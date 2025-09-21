@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getSearchSuggestions = exports.getFilterOptions = exports.getCollections = exports.getProductsByCategory = exports.getBestSellers = exports.getNewArrivals = exports.getFeaturedProducts = exports.getProduct = exports.getProducts = void 0;
-const models_1 = require("@/models");
+const models_1 = require("../models");
 const getProducts = async (req, res, next) => {
     try {
         const { page = 1, limit = 12, search, category, collection, brand, minPrice, maxPrice, sizes, colors, inStock, sortBy = 'featured' } = req.query;

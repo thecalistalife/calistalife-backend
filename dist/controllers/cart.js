@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.toggleWishlistItem = exports.removeFromWishlist = exports.addToWishlist = exports.getWishlist = exports.clearCart = exports.removeFromCart = exports.updateCartItem = exports.addToCart = exports.getCart = void 0;
-const models_1 = require("@/models");
+const models_1 = require("../models");
 const getCart = async (req, res, next) => {
     try {
         const userId = req.user._id;

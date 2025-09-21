@@ -55,6 +55,41 @@ const userSchema = new mongoose_1.Schema({
         type: String,
         match: [/^\+?[\d\s-()]+$/, 'Please provide a valid phone number']
     },
+    emailVerified: {
+        type: Boolean,
+        default: false
+    },
+    googleId: {
+        type: String,
+        default: null
+    },
+    refreshTokenHash: {
+        type: String,
+        select: false,
+        default: null
+    },
+    refreshTokenExpires: {
+        type: Date,
+        default: null
+    },
+    passwordResetToken: {
+        type: String,
+        select: false,
+        default: null
+    },
+    passwordResetExpires: {
+        type: Date,
+        default: null
+    },
+    emailVerificationToken: {
+        type: String,
+        select: false,
+        default: null
+    },
+    emailVerificationExpires: {
+        type: Date,
+        default: null
+    },
     addresses: [addressSchema]
 }, {
     timestamps: true

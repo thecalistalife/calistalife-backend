@@ -1,4 +1,4 @@
-import { ICart } from '@/types';
+import { ICart } from '../types';
 export declare const Cart: import("mongoose").Model<ICart, {}, {}, {}, import("mongoose").Document<unknown, {}, ICart, {}, {}> & ICart & Required<{
     _id: unknown;
 }> & {

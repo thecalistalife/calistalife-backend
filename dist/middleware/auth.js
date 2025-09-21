@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.optionalAuth = exports.restrictTo = exports.protect = void 0;
-const models_1 = require("@/models");
-const auth_1 = require("@/utils/auth");
+const models_1 = require("../models");
+const auth_1 = require("../utils/auth");
 const protect = async (req, res, next) => {
     try {
         let token;
