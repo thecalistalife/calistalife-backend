@@ -15,6 +15,7 @@ const auth_1 = __importDefault(require("@/routes/auth"));
 const products_1 = __importDefault(require("@/routes/products"));
 const cart_1 = __importDefault(require("@/routes/cart"));
 const orders_1 = __importDefault(require("@/routes/orders"));
+const payments_1 = __importDefault(require("@/routes/payments"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 app.set('trust proxy', 1);
@@ -40,6 +41,7 @@ app.use('/api/auth', auth_1.default);
 app.use('/api/products', products_1.default);
 app.use('/api/cart', cart_1.default);
 app.use('/api/orders', orders_1.default);
+app.use('/api/payments', payments_1.default);
 app.use(middleware_1.notFound);
 app.use(middleware_1.errorHandler);
 const connectDB = async () => {

@@ -69,8 +69,9 @@ exports.corsOptions = {
     origin: function (origin, callback) {
         if (!origin)
             return callback(null, true);
+        const fromEnv = (process.env.CORS_ORIGIN || process.env.CLIENT_URL || '').split(',').map((s) => s.trim()).filter(Boolean);
         const allowedOrigins = [
-            process.env.CLIENT_URL || 'http://localhost:5173',
+            ...fromEnv,
             'http://localhost:3000',
             'http://localhost:5173'
         ];
