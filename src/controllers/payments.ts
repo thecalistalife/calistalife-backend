@@ -1,8 +1,17 @@
 import type { Request, Response, NextFunction } from 'express';
 import Stripe from 'stripe';
 
+// Extend Express Request type to include user
+declare global {
+  namespace Express {
+    interface Request {
+      user?: any;
+    }
+  }
+}
+
 const stripeSecret = process.env.STRIPE_SECRET_KEY;
-const stripe = stripeSecret ? new Stripe(stripeSecret, { apiVersion: '2024-06-20' }) : null;
+const stripe = stripeSecret ? new Stripe(stripeSecret) : null;
 
 export const createPaymentIntent = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -26,7 +35,7 @@ export const createPaymentIntent = async (req: Request, res: Response, next: Nex
       currency,
       metadata: {
         ...metadata,
-        userId: req.user?._id?.toString() || 'guest',
+        userId: (req.user as any)?._id?.toString() || 'guest',
       },
       automatic_payment_methods: { enabled: true },
     });
