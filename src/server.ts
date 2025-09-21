@@ -105,6 +105,10 @@ app.get('/api/products', (req, res) => {
   });
 });
 
+// Payments (Stripe) route mounted here for lightweight server entry
+import paymentsRoutes from './routes/payments';
+app.use('/api/payments', paymentsRoutes);
+
 // Placeholder image endpoint
 app.get('/api/placeholder/:filename', (req, res) => {
   res.status(200).json({
