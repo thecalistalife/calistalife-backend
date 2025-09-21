@@ -10,6 +10,14 @@ export interface IUser extends Document {
   role: 'customer' | 'admin';
   avatar?: string;
   phone?: string;
+  emailVerified: boolean;
+  googleId?: string | null;
+  refreshTokenHash?: string | null;
+  refreshTokenExpires?: Date | null;
+  passwordResetToken?: string | null;
+  passwordResetExpires?: Date | null;
+  emailVerificationToken?: string | null;
+  emailVerificationExpires?: Date | null;
   addresses: IAddress[];
   createdAt: Date;
   updatedAt: Date;

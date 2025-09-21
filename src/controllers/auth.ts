@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { User } from '@/models';
 import { AuthRequest, ApiResponse, IUser } from '@/types';
-import { generateToken, getCookieOptions } from '@/utils/auth';
+import { generateAccessToken, generateRefreshToken, getAccessCookieOptions, getRefreshCookieOptions } from '@/utils/auth';
+import crypto from 'crypto';
+import { sendMail } from '@/utils/email';
 
 // Register user
 export const register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -26,18 +28,22 @@ export const register = async (req: Request, res: Response, next: NextFunction):
     });
 
     // Generate token
-    const token = generateToken(user);
+    const accessToken = generateAccessToken(user);
+    const { token: refreshToken, hash, expires } = generateRefreshToken();
+    user.refreshTokenHash = hash;
+    user.refreshTokenExpires = expires;
+    await user.save();
 
-    // Set cookie
-    const cookieOptions = getCookieOptions();
-    res.cookie('token', token, cookieOptions);
+    // Set cookies
+    res.cookie('token', accessToken, getAccessCookieOptions());
+    res.cookie('refresh_token', refreshToken, getRefreshCookieOptions());
 
     const response: ApiResponse<{ user: IUser; token: string }> = {
       success: true,
       message: 'User registered successfully',
       data: {
         user,
-        token
+        token: accessToken
       }
     };
 
@@ -73,11 +79,14 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
     }
 
     // Generate token
-    const token = generateToken(user);
+    const accessToken = generateAccessToken(user);
+    const { token: refreshToken, hash, expires } = generateRefreshToken();
+    user.refreshTokenHash = hash;
+    user.refreshTokenExpires = expires;
+    await user.save();
 
-    // Set cookie
-    const cookieOptions = getCookieOptions();
-    res.cookie('token', token, cookieOptions);
+    res.cookie('token', accessToken, getAccessCookieOptions());
+    res.cookie('refresh_token', refreshToken, getRefreshCookieOptions());
 
     // Remove password from response
     const userResponse = user.toJSON();
@@ -87,7 +96,7 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
       message: 'Login successful',
       data: {
         user: userResponse,
-        token
+        token: accessToken
       }
     };
 
@@ -100,10 +109,15 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
 // Logout user
 export const logout = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    res.cookie('token', '', {
-      expires: new Date(0),
-      httpOnly: true
-    });
+    // Attempt to find user by refresh token cookie to revoke
+    const rt = (req as any).cookies?.refresh_token as string | undefined;
+    if (rt) {
+      const hash = crypto.createHash('sha256').update(rt).digest('hex');
+      await User.updateOne({ refreshTokenHash: hash }, { $set: { refreshTokenHash: null, refreshTokenExpires: null } });
+    }
+
+    res.cookie('token', '', { expires: new Date(0), httpOnly: true });
+    res.cookie('refresh_token', '', { expires: new Date(0), httpOnly: true });
 
     const response: ApiResponse = {
       success: true,
@@ -165,6 +179,210 @@ export const updateProfile = async (req: AuthRequest, res: Response, next: NextF
     };
 
     res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Refresh access token using refresh token cookie
+export const refreshToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const rt = (req as any).cookies?.refresh_token as string | undefined;
+    if (!rt) {
+      res.status(401).json({ success: false, message: 'No refresh token provided' });
+      return;
+    }
+
+    const hash = crypto.createHash('sha256').update(rt).digest('hex');
+    const user = await User.findOne({ refreshTokenHash: hash }).select('+password');
+    if (!user || !user.refreshTokenExpires || user.refreshTokenExpires < new Date()) {
+      res.status(401).json({ success: false, message: 'Invalid or expired refresh token' });
+      return;
+    }
+
+    // Rotate refresh token
+    const { token: newRt, hash: newHash, expires } = generateRefreshToken();
+    user.refreshTokenHash = newHash;
+    user.refreshTokenExpires = expires;
+    await user.save();
+
+    const access = generateAccessToken(user);
+    res.cookie('token', access, getAccessCookieOptions());
+    res.cookie('refresh_token', newRt, getRefreshCookieOptions());
+
+    res.status(200).json({ success: true, message: 'Token refreshed', data: { token: access } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Forgot password
+export const forgotPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) {
+      // do not reveal existence
+      res.status(200).json({ success: true, message: 'If that email exists, a reset link has been sent' });
+      return;
+    }
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+    user.passwordResetToken = resetHash;
+    user.passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    await user.save();
+
+    const baseUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const resetUrl = `${baseUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
+
+    await sendMail({
+      to: email,
+      subject: 'Reset your password',
+      html: `<p>You requested a password reset.</p><p>Click <a href="${resetUrl}">here</a> to reset your password. The link expires in 1 hour.</p>`
+    });
+
+    res.status(200).json({ success: true, message: 'If that email exists, a reset link has been sent' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Reset password
+export const resetPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { token, email, newPassword } = req.body;
+    if (!token || !email || !newPassword) {
+      res.status(400).json({ success: false, message: 'Missing fields' });
+      return;
+    }
+    const hash = crypto.createHash('sha256').update(token).digest('hex');
+    const user = await User.findOne({ email, passwordResetToken: hash, passwordResetExpires: { $gt: new Date() } }).select('+password');
+    if (!user) {
+      res.status(400).json({ success: false, message: 'Invalid or expired reset token' });
+      return;
+    }
+
+    user.password = newPassword;
+    user.passwordResetToken = null as any;
+    user.passwordResetExpires = null as any;
+    await user.save();
+
+    res.status(200).json({ success: true, message: 'Password reset successful' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Request email verification (for logged-in user)
+export const requestEmailVerification = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const user = await User.findById(req.user!._id);
+    if (!user) {
+      res.status(404).json({ success: false, message: 'User not found' });
+      return;
+    }
+    if (user.emailVerified) {
+      res.status(200).json({ success: true, message: 'Email already verified' });
+      return;
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const hash = crypto.createHash('sha256').update(token).digest('hex');
+    user.emailVerificationToken = hash;
+    user.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
+    await user.save();
+
+    const baseUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const verifyUrl = `${baseUrl}/verify-email?token=${token}&email=${encodeURIComponent(user.email)}`;
+
+    await sendMail({
+      to: user.email,
+      subject: 'Verify your email',
+      html: `<p>Welcome!</p><p>Click <a href="${verifyUrl}">here</a> to verify your email (expires in 24 hours).</p>`
+    });
+
+    res.status(200).json({ success: true, message: 'Verification email sent' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Confirm email verification
+export const verifyEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { token, email } = req.body;
+    if (!token || !email) {
+      res.status(400).json({ success: false, message: 'Missing token or email' });
+      return;
+    }
+
+    const hash = crypto.createHash('sha256').update(token).digest('hex');
+    const user = await User.findOne({ email, emailVerificationToken: hash, emailVerificationExpires: { $gt: new Date() } });
+    if (!user) {
+      res.status(400).json({ success: false, message: 'Invalid or expired verification token' });
+      return;
+    }
+
+    user.emailVerified = true;
+    user.emailVerificationToken = null as any;
+    user.emailVerificationExpires = null as any;
+    await user.save();
+
+    res.status(200).json({ success: true, message: 'Email verified successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Google login using ID token from frontend
+export const googleLogin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { idToken } = req.body;
+    if (!idToken) {
+      res.status(400).json({ success: false, message: 'Missing idToken' });
+      return;
+    }
+
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      res.status(500).json({ success: false, message: 'Google client not configured' });
+      return;
+    }
+
+    const { OAuth2Client } = await import('google-auth-library');
+    const client = new OAuth2Client(clientId);
+    const ticket = await client.verifyIdToken({ idToken, audience: clientId });
+    const payload = ticket.getPayload();
+    if (!payload || !payload.email) {
+      res.status(400).json({ success: false, message: 'Invalid Google token' });
+      return;
+    }
+
+    const email = payload.email.toLowerCase();
+    const name = payload.name || email.split('@')[0];
+    const googleId = payload.sub;
+
+    let user = await User.findOne({ email });
+    if (!user) {
+      user = await User.create({ name, email, password: crypto.randomBytes(16).toString('hex'), googleId, emailVerified: true, avatar: payload.picture || null });
+    } else {
+      if (!user.googleId) user.googleId = googleId;
+      if (!user.emailVerified) user.emailVerified = true;
+      await user.save();
+    }
+
+    // Issue tokens
+    const accessToken = generateAccessToken(user);
+    const { token: refreshToken, hash, expires } = generateRefreshToken();
+    user.refreshTokenHash = hash;
+    user.refreshTokenExpires = expires;
+    await user.save();
+
+    res.cookie('token', accessToken, getAccessCookieOptions());
+    res.cookie('refresh_token', refreshToken, getRefreshCookieOptions());
+
+    res.status(200).json({ success: true, message: 'Login successful', data: { user: user.toJSON(), token: accessToken } });
   } catch (error) {
     next(error);
   }

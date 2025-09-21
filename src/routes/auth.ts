@@ -9,7 +9,13 @@ import {
   changePassword,
   addAddress,
   updateAddress,
-  deleteAddress
+  deleteAddress,
+  refreshToken,
+  forgotPassword,
+  resetPassword,
+  requestEmailVerification,
+  verifyEmail,
+  googleLogin
 } from '@/controllers/auth';
 import { protect, handleValidationErrors, authRateLimit } from '@/middleware';
 
@@ -38,6 +44,35 @@ const loginValidation = [
   body('password')
     .notEmpty()
     .withMessage('Password is required')
+];
+
+const forgotPasswordValidation = [
+  body('email')
+    .isEmail()
+    .normalizeEmail()
+    .withMessage('Please provide a valid email')
+];
+
+const resetPasswordValidation = [
+  body('token')
+    .notEmpty()
+    .withMessage('Token is required'),
+  body('email')
+    .isEmail()
+    .normalizeEmail()
+    .withMessage('Please provide a valid email'),
+  body('newPassword')
+    .isLength({ min: 6 })
+    .withMessage('New password must be at least 6 characters long')
+];
+
+const verifyEmailValidation = [
+  body('token').notEmpty().withMessage('Token is required'),
+  body('email').isEmail().normalizeEmail().withMessage('Valid email required')
+];
+
+const googleLoginValidation = [
+  body('idToken').notEmpty().withMessage('Google idToken is required')
 ];
 
 const updateProfileValidation = [
@@ -102,8 +137,24 @@ router.post('/register', authRateLimit, registerValidation, handleValidationErro
 router.post('/login', authRateLimit, loginValidation, handleValidationErrors, login);
 router.post('/logout', logout);
 
-// Protected routes
+// Token refresh
+router.post('/refresh', refreshToken);
+
+// Password reset (public)
+router.post('/password/forgot', authRateLimit, forgotPasswordValidation, handleValidationErrors, forgotPassword);
+router.post('/password/reset', authRateLimit, resetPasswordValidation, handleValidationErrors, resetPassword);
+
+// Email verification confirm (public)
+router.post('/verify/confirm', verifyEmailValidation, handleValidationErrors, verifyEmail);
+
+// Google login (public)
+router.post('/google', googleLoginValidation, handleValidationErrors, googleLogin);
+
+// Protected routes (after public auth routes above)
 router.use(protect);
+
+// Email verification request (protected)
+router.post('/verify/request', requestEmailVerification);
 
 router.get('/me', getMe);
 router.put('/profile', updateProfileValidation, handleValidationErrors, updateProfile);
