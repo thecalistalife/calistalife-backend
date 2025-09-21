@@ -13,14 +13,14 @@ import {
   generalRateLimit,
   requestLogger,
   corsOptions
-} from '@/middleware';
+} from './middleware/index';
 
 // Import routes
-import authRoutes from '@/routes/auth';
-import productRoutes from '@/routes/products';
-import cartRoutes from '@/routes/cart';
-import orderRoutes from '@/routes/orders';
-import paymentsRoutes from '@/routes/payments';
+import authRoutes from './routes/auth';
+import productRoutes from './routes/products';
+import cartRoutes from './routes/cart';
+import orderRoutes from './routes/orders';
+import paymentsRoutes from './routes/payments';
 
 // Load environment variables
 dotenv.config();
@@ -88,7 +88,7 @@ const connectDB = async () => {
     
   } catch (error) {
     console.error('❌ MongoDB connection failed:', error);
-    process.exit(1);
+    console.log('⚠️  Continuing without database for development/testing...');
   }
 };
 
@@ -119,7 +119,7 @@ process.on('SIGINT', async () => {
 const startServer = async () => {
   await connectDB();
   
-  const PORT = process.env.PORT || 5000;
+  const PORT = process.env.PORT || 10000;
   
   const server = app.listen(PORT, () => {
     console.log('🚀 TheCalista Backend Server Started');
