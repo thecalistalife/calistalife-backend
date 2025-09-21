@@ -20,6 +20,7 @@ import authRoutes from '@/routes/auth';
 import productRoutes from '@/routes/products';
 import cartRoutes from '@/routes/cart';
 import orderRoutes from '@/routes/orders';
+import paymentsRoutes from '@/routes/payments';
 
 // Load environment variables
 dotenv.config();
@@ -67,6 +68,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/payments', paymentsRoutes);
 
 // Handle 404
 app.use(notFound);

@@ -92,8 +92,10 @@ export const corsOptions = {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
+    // Support multiple origins via CORS_ORIGIN (comma-separated) or single CLIENT_URL
+    const fromEnv = (process.env.CORS_ORIGIN || process.env.CLIENT_URL || '').split(',').map((s: string) => s.trim()).filter(Boolean);
     const allowedOrigins = [
-      process.env.CLIENT_URL || 'http://localhost:5173',
+      ...fromEnv,
       'http://localhost:3000',
       'http://localhost:5173'
     ];
