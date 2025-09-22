@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
-import { createPaymentIntent, handleStripeWebhook } from '../controllers/payments';
+import { createPaymentIntent, handleStripeWebhook, createRazorpayOrder } from '../controllers/payments';
 import { handleValidationErrors, optionalAuth } from '../middleware';
 
 const router = Router();
@@ -16,5 +16,8 @@ const createIntentValidation = [
 ];
 
 router.post('/intent', optionalAuth, createIntentValidation, handleValidationErrors, createPaymentIntent);
+
+// Razorpay order creation (amount in paise)
+router.post('/razorpay/order', optionalAuth, body('amount').isInt({ min: 100 }).withMessage('Amount in paise must be >= 100'), handleValidationErrors, createRazorpayOrder);
 
 export default router;

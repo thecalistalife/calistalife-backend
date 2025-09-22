@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import Stripe from 'stripe';
+import Razorpay from 'razorpay';
 
 // Extend Express Request type to include user
 declare global {
@@ -12,6 +13,10 @@ declare global {
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY;
 const stripe = stripeSecret ? new Stripe(stripeSecret) : null;
+
+const razorpayKeyId = process.env.RAZORPAY_KEY_ID;
+const razorpayKeySecret = process.env.RAZORPAY_KEY_SECRET;
+const razorpay = razorpayKeyId && razorpayKeySecret ? new Razorpay({ key_id: razorpayKeyId, key_secret: razorpayKeySecret }) : null;
 
 export const createPaymentIntent = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -47,6 +52,25 @@ export const createPaymentIntent = async (req: Request, res: Response, next: Nex
         paymentIntentId: paymentIntent.id
       } 
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const createRazorpayOrder = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!razorpay) {
+      res.status(500).json({ success: false, message: 'Razorpay is not configured' });
+      return;
+    }
+    const { amount } = req.body as { amount: number };
+    if (!amount || amount < 100) {
+      res.status(400).json({ success: false, message: 'Amount must be at least 100 paise (₹1)' });
+      return;
+    }
+
+    const order = await razorpay.orders.create({ amount, currency: 'INR', receipt: `rcpt_${Date.now()}` });
+    res.status(200).json({ success: true, data: { orderId: order.id, amount: order.amount, currency: order.currency } });
   } catch (err) {
     next(err);
   }
