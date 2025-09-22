@@ -1,25 +1,20 @@
 import { Router } from 'express';
-import { protect } from '@/middleware';
+import { body } from 'express-validator';
+import { optionalAuth, handleValidationErrors } from '@/middleware';
+import { createOrder } from '@/controllers/orders';
 
 const router = Router();
 
-// All routes require authentication
-router.use(protect);
+// Allow guests or authenticated users to place orders
+router.use(optionalAuth);
 
-// Placeholder routes for orders - to be implemented with Stripe integration
-router.get('/', (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'Orders endpoint - to be implemented',
-    data: []
-  });
-});
-
-router.post('/create', (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'Create order endpoint - to be implemented with Stripe'
-  });
-});
+// Create order (after successful payment)
+router.post(
+  '/create',
+  body('items').isArray({ min: 1 }).withMessage('Items are required'),
+  body('totalAmount').isFloat({ gt: 0 }).withMessage('Total amount must be > 0'),
+  handleValidationErrors,
+  createOrder
+);
 
 export default router;
