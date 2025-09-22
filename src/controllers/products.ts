@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { Product, Collection } from '@/models';
+// Defer Mongo models import to runtime only when needed to avoid unnecessary Mongoose initialization
 import { AuthRequest, ApiResponse, IProduct, ProductQuery, SortOption } from '@/types';
 import { supabase } from '@/utils/supabase';
 
@@ -84,6 +84,7 @@ export const getProducts = async (req: Request, res: Response, next: NextFunctio
     }
 
     // Fallback to MongoDB
+    const { Product, Collection } = await import('@/models');
     const filter: any = {};
     if (search) {
       filter.$or = [
@@ -170,6 +171,7 @@ export const getProduct = async (req: Request, res: Response, next: NextFunction
     }
 
     // Fallback Mongo
+    const { Product } = await import('@/models');
     let product = await Product.findById(id);
     if (!product) {
       product = await Product.findOne({ slug: id });
@@ -205,6 +207,7 @@ export const getFeaturedProducts = async (req: Request, res: Response, next: Nex
       return;
     }
 
+    const { Product } = await import('@/models');
     const products = await Product.find({ isFeatured: true })
       .sort({ createdAt: -1 })
       .limit(parseInt(limit.toString()))
@@ -240,6 +243,7 @@ export const getNewArrivals = async (req: Request, res: Response, next: NextFunc
       return;
     }
 
+    const { Product } = await import('@/models');
     const products = await Product.find({ isNew: true })
       .sort({ createdAt: -1 })
       .limit(parseInt(limit.toString()))
@@ -276,6 +280,7 @@ export const getBestSellers = async (req: Request, res: Response, next: NextFunc
       return;
     }
 
+    const { Product } = await import('@/models');
     const products = await Product.find({ isBestSeller: true })
       .sort({ rating: -1, reviews: -1 })
       .limit(parseInt(limit.toString()))
@@ -347,6 +352,7 @@ export const getProductsByCategory = async (req: Request, res: Response, next: N
     const limitNum = parseInt(limit.toString());
     const skip = (pageNum - 1) * limitNum;
 
+    const { Product } = await import('@/models');
     const [products, total] = await Promise.all([
       Product.find({ category })
         .sort(sort)
@@ -390,6 +396,7 @@ export const getCollections = async (req: Request, res: Response, next: NextFunc
       return;
     }
 
+    const { Collection } = await import('@/models');
     const collections = await Collection.find({ isActive: true })
       .sort({ sortOrder: 1, createdAt: -1 })
       .lean();
@@ -397,6 +404,7 @@ export const getCollections = async (req: Request, res: Response, next: NextFunc
     // Get product counts for each collection
     const collectionsWithCounts = await Promise.all(
       collections.map(async (collection) => {
+        const { Product } = await import('@/models');
         const productCount = await Product.countDocuments({ 
           collection: collection.name 
         });
@@ -443,6 +451,7 @@ export const getFilterOptions = async (req: Request, res: Response, next: NextFu
       return;
     }
 
+    const { Product, Collection } = await import('@/models');
     const [categories, brands, sizes, colors, priceRange] = await Promise.all([
       Product.distinct('category'),
       Product.distinct('brand'),
@@ -505,6 +514,7 @@ export const getSearchSuggestions = async (req: Request, res: Response, next: Ne
       return;
     }
 
+    const { Product } = await import('@/models');
     const products = await Product.find(
       { $text: { $search: q } },
       { name: 1, slug: 1, price: 1, images: 1, category: 1 }

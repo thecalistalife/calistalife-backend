@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { User } from '@/models';
 import { AuthRequest } from '@/types';
 import { verifyToken } from '@/utils/auth';
+import { users } from '@/services/supabaseUser';
 
 // Middleware to protect routes
 export const protect = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
@@ -29,9 +29,8 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
       // Verify token
       const decoded = verifyToken(token);
       
-      // Get user from database
-      const user = await User.findById(decoded.id).select('+password');
-      
+      // Get user from database (Supabase)
+      const user = await users.findById(decoded.id);
       if (!user) {
         res.status(401).json({
           success: false,
@@ -40,7 +39,8 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
         return;
       }
 
-      req.user = user;
+      // Adapt to existing type shape
+      req.user = { ...(user as any), _id: (user as any).id } as any;
       next();
     } catch (error) {
       res.status(401).json({
@@ -86,9 +86,9 @@ export const optionalAuth = async (req: AuthRequest, res: Response, next: NextFu
     if (token) {
       try {
         const decoded = verifyToken(token);
-        const user = await User.findById(decoded.id);
+        const user = await users.findById(decoded.id);
         if (user) {
-          req.user = user;
+          req.user = { ...(user as any), _id: (user as any).id } as any;
         }
       } catch (error) {
         // Continue without user if token is invalid

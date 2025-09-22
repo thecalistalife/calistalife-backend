@@ -18,9 +18,9 @@ import {
 // Import routes
 import authRoutes from './routes/auth';
 import productRoutes from './routes/products';
+import paymentsRoutes from './routes/payments';
 import cartRoutes from './routes/cart';
 import orderRoutes from './routes/orders';
-import paymentsRoutes from './routes/payments';
 
 // Load environment variables
 dotenv.config();
@@ -66,9 +66,9 @@ app.get('/api/health', (req, res) => {
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/payments', paymentsRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
-app.use('/api/payments', paymentsRoutes);
 
 // Handle 404
 app.use(notFound);
@@ -76,30 +76,35 @@ app.use(notFound);
 // Global error handler
 app.use(errorHandler);
 
-// Database connection
+// Database connection (optional)
 const connectDB = async () => {
+  const useMongo = process.env.USE_MONGODB === 'true';
+  if (!useMongo) {
+    console.log('ℹ️ Skipping MongoDB connection (USE_MONGODB=false).');
+    return;
+  }
+
   try {
     const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/thecalista';
-    
     await mongoose.connect(mongoURI);
-    
     console.log('✅ MongoDB Connected Successfully');
     console.log(`📍 Database: ${mongoose.connection.name}`);
-    
   } catch (error) {
     console.error('❌ MongoDB connection failed:', error);
     console.log('⚠️  Continuing without database for development/testing...');
   }
 };
 
-// Handle database connection events
-mongoose.connection.on('disconnected', () => {
-  console.log('⚠️  MongoDB disconnected');
-});
+// Handle database connection events only if using Mongo
+if (process.env.USE_MONGODB === 'true') {
+  mongoose.connection.on('disconnected', () => {
+    console.log('⚠️  MongoDB disconnected');
+  });
 
-mongoose.connection.on('error', (err) => {
-  console.error('❌ MongoDB connection error:', err);
-});
+  mongoose.connection.on('error', (err) => {
+    console.error('❌ MongoDB connection error:', err);
+  });
+}
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
@@ -118,7 +123,7 @@ process.on('SIGINT', async () => {
 // Start server
 const startServer = async () => {
   await connectDB();
-  
+
   const PORT = process.env.PORT || 10000;
   
   const server = app.listen(PORT, () => {

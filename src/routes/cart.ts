@@ -15,12 +15,11 @@ import { protect, handleValidationErrors } from '@/middleware';
 
 const router = Router();
 
-// Validation rules
+// Validation rules (generic string IDs; Supabase may use UUID or text)
 const addToCartValidation = [
   body('productId')
     .notEmpty()
-    .isMongoId()
-    .withMessage('Valid product ID is required'),
+    .withMessage('Product ID is required'),
   body('size')
     .notEmpty()
     .withMessage('Size is required'),
@@ -36,8 +35,7 @@ const addToCartValidation = [
 const updateCartValidation = [
   body('productId')
     .notEmpty()
-    .isMongoId()
-    .withMessage('Valid product ID is required'),
+    .withMessage('Product ID is required'),
   body('size')
     .notEmpty()
     .withMessage('Size is required'),
@@ -52,8 +50,7 @@ const updateCartValidation = [
 const removeFromCartValidation = [
   body('productId')
     .notEmpty()
-    .isMongoId()
-    .withMessage('Valid product ID is required'),
+    .withMessage('Product ID is required'),
   body('size')
     .notEmpty()
     .withMessage('Size is required'),
@@ -65,8 +62,7 @@ const removeFromCartValidation = [
 const wishlistValidation = [
   body('productId')
     .notEmpty()
-    .isMongoId()
-    .withMessage('Valid product ID is required')
+    .withMessage('Product ID is required')
 ];
 
 // All routes require authentication
